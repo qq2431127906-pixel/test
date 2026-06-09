@@ -1,3 +1,4 @@
+# run.py — 启动器
 import os, sys, subprocess, time, threading, webbrowser, shutil
 from dotenv import load_dotenv
 
@@ -7,16 +8,18 @@ load_dotenv(os.path.join(_app_dir, ".env"))
 HOST = "127.0.0.1"
 PORT = 8501
 
-# 彻底禁止 Streamlit 开浏览器（环境变量比命令行更可靠）
-os.environ["STREAMLIT_SERVER_HEADLESS"] = "true"
-os.environ["STREAMLIT_SERVER_PORT"] = str(PORT)
-os.environ["STREAMLIT_SERVER_ADDRESS"] = HOST
-
 
 def resource_path(relative_path):
     if getattr(sys, "frozen", False):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(_app_dir, relative_path)
+
+
+def get_python():
+    """PyInstaller 模式下返回 _internal/python.exe，否则返回当前解释器"""
+    if getattr(sys, "frozen", False):
+        return os.path.join(sys._MEIPASS, "python.exe")
+    return sys.executable
 
 
 def main():
@@ -36,24 +39,20 @@ def main():
         return
 
     app_path = resource_path("app.py")
+    python_exe = get_python()
 
-    # 子进程启动 Streamlit
     proc = subprocess.Popen(
-        [
-            sys.executable, "-m", "streamlit", "run", app_path,
-            "--server.port", str(PORT),
-            "--server.address", HOST,
-            "--server.headless", "true",
-            "--server.fileWatcherType", "none",
-            "--browser.gatherUsageStats", "false",
-            "--global.developmentMode", "false",
-        ],
-        env=os.environ.copy(),
+        [python_exe, "-m", "streamlit", "run", app_path,
+         "--server.port", str(PORT),
+         "--server.address", HOST,
+         "--server.headless", "true",
+         "--server.fileWatcherType", "none",
+         "--browser.gatherUsageStats", "false",
+         "--global.developmentMode", "false"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
 
-    # 单次打开浏览器（3 秒延迟等服务器就绪）
     def _open():
         time.sleep(3)
         webbrowser.open(f"http://{HOST}:{PORT}")
