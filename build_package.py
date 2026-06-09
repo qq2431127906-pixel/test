@@ -72,9 +72,19 @@ print(f"NSIS script written ({len(nsi)} chars)")
 # --- 运行 NSIS ---
 makensis = os.environ.get("MAKENSIS", ".\\nsis\\makensis.exe")
 result = subprocess.run([makensis, "installer.nsi"], capture_output=True, text=True, encoding="utf-8", errors="replace")
-print(result.stdout)
+# 只打结果行（英文），避免 Windows 终端编码问题
+for line in result.stdout.replace('\r', '').split('\n'):
+    if not line.strip():
+        continue
+    try:
+        print(line)
+    except UnicodeEncodeError:
+        print(line.encode('ascii', errors='replace').decode())
 if result.returncode != 0:
-    print("STDERR:", result.stderr)
+    try:
+        print("NSIS ERROR:", result.stderr)
+    except UnicodeEncodeError:
+        pass
     sys.exit(1)
 
 for f in os.listdir("."):
