@@ -77,19 +77,14 @@ def check_update():
         if not download_url:
             download_url = data.get("html_url", "")
 
-        print("")
         print("=" * 60)
         print(f"  🆕 发现新版本 v{remote_ver}（当前：v{local_ver}）")
-        print(f"  下载地址：{download_url}")
+        if download_url:
+            print(f"  下载地址：{download_url}")
+        else:
+            print(f"  查看：{data.get('html_url', '')}")
         print("=" * 60)
         print("")
-
-        # 尝试打开下载页面
-        if download_url:
-            try:
-                webbrowser.open(download_url)
-            except Exception:
-                pass
 
     except urllib.error.HTTPError as e:
         if e.code == 403:
@@ -126,7 +121,7 @@ def main():
         input("  按回车键退出...")
         sys.exit(1)
 
-    # 后台更新检查
+    # 后台更新检查（不自动打开浏览器）
     threading.Thread(target=check_update, daemon=True).start()
 
     # 启动 Streamlit
@@ -136,23 +131,23 @@ def main():
         "--server.headless", "true",
         "--server.address", HOST,
         "--server.port", str(PORT),
-        "--browser.serverAddress", f"{HOST}:{PORT}",
         "--server.enableCORS", "false",
         "--server.enableXsrfProtection", "false",
     ]
 
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
 
-    def open_browser():
-        time.sleep(3)
-        webbrowser.open(f"http://{HOST}:{PORT}")
-    threading.Thread(target=open_browser, daemon=True).start()
-
     print("=" * 60)
     print(f"  {APP_NAME} v{get_local_version()}")
-    print(f"  浏览器中打开: http://{HOST}:{PORT}")
+    print(f"  浏览器打开: http://{HOST}:{PORT}")
     print("  关闭此窗口即可停止服务")
     print("=" * 60)
+
+    # 3 秒后自动打开浏览器（只开一次）
+    def _open():
+        time.sleep(3)
+        webbrowser.open(f"http://{HOST}:{PORT}")
+    threading.Thread(target=_open, daemon=True).start()
 
     try:
         for line in proc.stdout:
