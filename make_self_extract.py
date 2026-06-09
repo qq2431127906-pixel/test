@@ -1,7 +1,6 @@
 # make_self_extract.py — 零依赖制作自解压安装包
-# 用 csc.exe (Windows 自带) 编译 sfx_stub.cs + 合并 ZIP
-
 import sys, os, struct, shutil
+sys.stdout.reconfigure(encoding='utf-8', errors='replace') if hasattr(sys.stdout, 'reconfigure') else None
 
 version = sys.argv[1]
 src = sys.argv[2]           # "dist\\assistant"

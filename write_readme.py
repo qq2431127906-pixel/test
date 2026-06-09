@@ -1,6 +1,9 @@
 # write_readme.py — 生成使用说明
 import sys, os
 
+# GitHub Actions Windows 终端编码修复
+sys.stdout.reconfigure(encoding='utf-8', errors='replace') if hasattr(sys.stdout, 'reconfigure') else None
+
 version = sys.argv[1]
 dist = sys.argv[2]
 
@@ -17,4 +20,4 @@ readme = f"""学术论文辅助写作智能体 v{version}
 """
 with open(os.path.join(dist, "使用说明.txt"), "w", encoding="utf-8") as f:
     f.write(readme)
-print("使用说明已写入")
+print("README written to dist")
