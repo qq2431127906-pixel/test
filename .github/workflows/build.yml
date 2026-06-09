@@ -18,7 +18,7 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 读取版本号
+      - name: 设置版本号
         id: version
         shell: bash
         run: |
@@ -41,7 +41,7 @@ jobs:
       - name: PyInstaller 打包
         shell: cmd
         run: |
-          pyinstaller --onedir --name "AcademicWritingAssistant" ^
+          pyinstaller --onedir --name "assistant" ^
             --add-data "app.py;." ^
             --add-data "literature_module.py;." ^
             --add-data "outline_module.py;." ^
@@ -58,44 +58,104 @@ jobs:
             --add-data ".env.example;." ^
             --console ^
             run.py
-          dir dist\AcademicWritingAssistant\run.exe
 
-      - name: 打包为 ZIP 安装包
+      - name: 下载 NSIS
         shell: powershell
         run: |
-          $version = "${{ steps.version.outputs.version }}"
-          $name = "学术论文辅助写作_v${version}"
-          $src = "dist\AcademicWritingAssistant"
+          $url = "https://sourceforge.net/projects/nsis/files/NSIS%203/3.10/nsis-3.10.zip/download"
+          Invoke-WebRequest -Uri $url -OutFile "nsis.zip" -UserAgent "Wget/1.21"
+          Expand-Archive nsis.zip -DestinationPath . -Force
+          # NSIS extracts to nsis-3.10 directory
+          Rename-Item -Path "nsis-3.10" -NewName "nsis" -Force -ErrorAction SilentlyContinue
+          # Verify
+          & ".\nsis\makensis.exe" /VERSION
+          echo "MAKENSIS=$PWD\nsis\makensis.exe" >> $env:GITHUB_ENV
 
-          # 创建用户 README
+      - name: 写入使用说明
+        shell: powershell
+        run: |
           @"
-          学术论文辅助写作智能体 v${version}
+          学术论文辅助写作智能体 v${{ steps.version.outputs.version }}
 
           【使用方法】
           1. 双击 run.exe 启动
-          2. 首次运行会自动创建 .env 文件，用记事本填写 DashScope API Key
+          2. 首次运行会自动创建 .env 并弹出记事本，请填入 DashScope API Key
           3. API Key 获取：https://dashscope.console.aliyun.com/apiKey
           4. 浏览器自动打开 http://127.0.0.1:8501
 
-          【关闭方法】
-          关闭 run.exe 的命令行窗口即可停止服务
+          【关闭】关闭命令行窗口即可停止
+          【注意】首次文献模块运行需下载约 400MB 模型
+          "@ | Out-File -FilePath "dist\assistant\使用说明.txt" -Encoding UTF8
 
-          【注意事项】
-          - 查重分析为语义判断，非正式查重
-          - 首次文献模块运行需下载约 400MB 模型
-          "@ | Out-File -FilePath "$src\使用说明.txt" -Encoding UTF8
+      - name: 生成 NSIS 脚本并打包
+        shell: powershell
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $nsi = @"
+          Unicode true
+          !define APP_NAME "学术论文辅助写作智能体"
+          !define APP_EXE "run.exe"
+          !define VERSION "${version}"
+          !define PUBLISHER "Academic Assistant"
 
-          # 打包 ZIP
-          Compress-Archive -Path "$src\*" -DestinationPath "${name}.zip" -Force
-          Write-Host "Created: ${name}.zip"
-          Get-ChildItem *.zip
+          Name "`${APP_NAME}"
+          OutFile "学术论文辅助写作智能体_Setup_v`${VERSION}.exe"
+          InstallDir "`$PROGRAMFILES\`${APP_NAME}"
+          RequestExecutionLevel admin
+          InstallDirRegKey HKLM "Software\`${APP_NAME}" "InstallDir"
+
+          Page directory
+          Page instfiles
+
+          Section "Install"
+            SetOutPath `$INSTDIR
+            File /r "dist\assistant\*.*"
+            WriteRegStr HKLM "Software\`${APP_NAME}" "InstallDir" "`$INSTDIR"
+            WriteRegStr HKLM "Software\`${APP_NAME}" "Version" "`${VERSION}"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\`${APP_NAME}" "DisplayName" "`${APP_NAME}"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\`${APP_NAME}" "UninstallString" '"`$INSTDIR\uninstall.exe"'
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\`${APP_NAME}" "DisplayVersion" "`${VERSION}"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\`${APP_NAME}" "Publisher" "`${PUBLISHER}"
+            WriteUninstaller "`$INSTDIR\uninstall.exe"
+            CreateShortCut "`$DESKTOP\`${APP_NAME}.lnk" "`$INSTDIR\`${APP_EXE}" "" "`$INSTDIR\`${APP_EXE}" 0
+            CreateDirectory "`$SMPROGRAMS\`${APP_NAME}"
+            CreateShortCut "`$SMPROGRAMS\`${APP_NAME}\`${APP_NAME}.lnk" "`$INSTDIR\`${APP_EXE}" "" "`$INSTDIR\`${APP_EXE}" 0
+            CreateShortCut "`$SMPROGRAMS\`${APP_NAME}\卸载.lnk" "`$INSTDIR\uninstall.exe"
+          SectionEnd
+
+          Section "Uninstall"
+            RMDir /r "`$INSTDIR\_internal"
+            RMDir /r "`$INSTDIR\paste_image_component"
+            RMDir /r "`$INSTDIR\drawing_component"
+            Delete "`$INSTDIR\*.*"
+            RMDir "`$INSTDIR"
+            Delete "`$DESKTOP\`${APP_NAME}.lnk"
+            RMDir /r "`$SMPROGRAMS\`${APP_NAME}"
+            DeleteRegKey HKLM "Software\`${APP_NAME}"
+            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\`${APP_NAME}"
+          SectionEnd
+          "@
+
+          $nsiPath = "$PWD\installer.nsi"
+          [System.IO.File]::WriteAllText($nsiPath, $nsi, [System.Text.UTF8Encoding]::new($false))
+          Write-Host "Generated NSIS script:"
+          Get-Content $nsiPath | Select-Object -First 3
+
+          # Run NSIS
+          & "$env:MAKENSIS" $nsiPath
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "NSIS failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+
+          Get-ChildItem "学术论文辅助写作智能体_Setup_*.exe"
 
       - name: 发布到 GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: "v${{ steps.version.outputs.version }}"
-          files: "学术论文辅助写作_v*.zip"
+          files: "学术论文辅助写作智能体_Setup_v*.exe"
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
