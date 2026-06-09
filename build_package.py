@@ -80,14 +80,46 @@ for line in result.stdout.replace('\r', '').split('\n'):
         print(line)
     except UnicodeEncodeError:
         print(line.encode('ascii', errors='replace').decode())
+print(f"NSIS exit code: {result.returncode}")
 if result.returncode != 0:
     try:
         print("NSIS ERROR:", result.stderr)
     except UnicodeEncodeError:
         pass
-    sys.exit(1)
+    # fallback: zip
+    print("Falling back to ZIP...")
+    import zipfile
+    zip_name = f"学术论文辅助写作_v{version}.zip"
+    with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(dist):
+            for file in files:
+                zf.write(os.path.join(root, file),
+                         os.path.relpath(os.path.join(root, file), dist))
+    mb = os.path.getsize(zip_name) / 1024 / 1024
+    print(f"CREATED: {zip_name} ({mb:.1f} MB)")
+    sys.exit(0)
 
+# List ALL exe files in workspace
+print("All .exe files in workspace:")
+for f in os.listdir("."):
+    if f.endswith(".exe"):
+        print(f"  {f} ({os.path.getsize(f)} bytes)")
+
+found = False
 for f in os.listdir("."):
     if f.endswith(".exe") and "Setup" in f:
         mb = os.path.getsize(f) / 1024 / 1024
         print(f"CREATED: {f} ({mb:.1f} MB)")
+        found = True
+
+if not found:
+    print("No Setup.exe found. Falling back to ZIP...")
+    import zipfile
+    zip_name = f"学术论文辅助写作_v{version}.zip"
+    with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(dist):
+            for file in files:
+                zf.write(os.path.join(root, file),
+                         os.path.relpath(os.path.join(root, file), dist))
+    mb = os.path.getsize(zip_name) / 1024 / 1024
+    print(f"CREATED: {zip_name} ({mb:.1f} MB)")

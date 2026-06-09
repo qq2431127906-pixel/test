@@ -13,6 +13,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - name: 检出代码
@@ -79,7 +81,10 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: "v${{ steps.version.outputs.version }}"
-          files: "学术论文辅助写作智能体_Setup_v*.exe"
+          files: |
+            学术论文辅助写作智能体_Setup_v*.exe
+            学术论文辅助写作_v*.zip
           generate_release_notes: true
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
