@@ -1,7 +1,7 @@
 ; 学术论文辅助写作智能体 — NSIS 安装脚本
 ; 将 PyInstaller --onedir 产物打包为单个 Setup.exe
-; 用法：nsis.bat 或 makensis installer.nsi
 
+Unicode true
 !define APP_NAME "学术论文辅助写作智能体"
 !define APP_EXE "run.exe"
 !define VERSION "1.0.0"
