@@ -1,4 +1,20 @@
 import os, sys, shutil
+
+# PyInstaller 可能漏打包 dist-info 元数据，注入 streamlit 版本号防崩
+try:
+    from importlib.metadata import version
+    version("streamlit")
+except Exception:
+    # 注入假的 streamlit 元数据
+    class _StreamlitDist:
+        def locate_file(self, path): return ""
+    import importlib.metadata as _imd
+    _imd.distributions = lambda **kw: None
+    try:
+        _imd._distributions["streamlit"] = _StreamlitDist()
+    except Exception:
+        pass
+
 from dotenv import load_dotenv, dotenv_values
 
 _app_dir = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
