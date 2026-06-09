@@ -1,4 +1,4 @@
-import os, sys, shutil, webbrowser
+import os, sys, shutil, webbrowser, subprocess
 from dotenv import load_dotenv, dotenv_values
 
 _app_dir = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
@@ -22,7 +22,7 @@ def main():
             print("获取: https://dashscope.console.aliyun.com/apiKey")
             if sys.platform == "win32":
                 os.startfile(env_path)
-        print("\n填好 Key 后，重新双击 run.exe 启动")
+        print("\n填好 Key 后，重新双击 assistant.exe 启动")
         input()
         return
 
@@ -31,22 +31,27 @@ def main():
 
     app_path = resource_path("app.py")
 
-    os.environ["STREAMLIT_SERVER_HEADLESS"] = "true"
-    os.environ["STREAMLIT_SERVER_PORT"] = "8501"
-    os.environ["STREAMLIT_SERVER_ADDRESS"] = "127.0.0.1"
-    os.environ["STREAMLIT_SERVER_FILE_WATCHER_TYPE"] = "none"
-    os.environ["STREAMLIT_BROWSER_GATHER_USAGE_STATS"] = "false"
-    os.environ["STREAMLIT_GLOBAL_DEVELOPMENT_MODE"] = "false"
+    frozen = getattr(sys, "frozen", False)
+    python = os.path.join(sys._MEIPASS, "python.exe") if frozen else sys.executable
 
-    webbrowser.open("http://127.0.0.1:8501")
+    cmd = [python, "-m", "streamlit", "run", app_path,
+           "--server.port", "8501", "--server.address", "127.0.0.1",
+           "--server.headless", "true", "--server.fileWatcherType", "none",
+           "--browser.gatherUsageStats", "false"]
+
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    if not frozen:
+        webbrowser.open("http://127.0.0.1:8501")
 
     print(f"\n  学术论文辅助写作智能体 已启动")
-    print(f"  浏览器访问: http://127.0.0.1:8501")
+    print(f"  请手动打开浏览器访问: http://127.0.0.1:8501")
     print(f"  关闭此窗口即可停止\n")
 
-    sys.argv = ["streamlit", "run", app_path]
-    from streamlit.web import cli as stcli
-    stcli.main()
+    try:
+        proc.wait()
+    except KeyboardInterrupt:
+        proc.terminate()
 
 
 if __name__ == "__main__":
