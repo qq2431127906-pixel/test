@@ -61,20 +61,12 @@ jobs:
             --console ^
             run.py
 
-      - name: 下载 NSIS
-        shell: powershell
-        run: |
-          $url = "https://sourceforge.net/projects/nsis/files/NSIS%203/3.10/nsis-3.10.zip/download"
-          Invoke-WebRequest -Uri $url -OutFile "nsis.zip" -UserAgent "Wget/1.21"
-          Expand-Archive nsis.zip -DestinationPath . -Force
-          # NSIS extracts to nsis-3.10 directory
-          Rename-Item -Path "nsis-3.10" -NewName "nsis" -Force -ErrorAction SilentlyContinue
-          # Verify
-          & ".\nsis\makensis.exe" /VERSION
-          echo "MAKENSIS=$PWD\nsis\makensis.exe" >> $env:GITHUB_ENV
+      - name: 写使用说明
+        run: python write_readme.py "${{ steps.version.outputs.version }}" "dist\\assistant"
 
-      - name: 写使用说明 + 生成 NSIS + 打包
-        run: python build_package.py "${{ steps.version.outputs.version }}" "dist\assistant"
+      - name: 用 iexpress 打包自解压 exe
+        shell: cmd
+        run: python make_self_extract.py "${{ steps.version.outputs.version }}" "dist\\assistant"
 
       - name: 发布到 GitHub Releases
         uses: softprops/action-gh-release@v2
