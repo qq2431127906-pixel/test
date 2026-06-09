@@ -84,7 +84,7 @@ jobs:
           files: |
             学术论文辅助写作智能体_Setup_v*.exe
             学术论文辅助写作_v*.zip
-          generate_release_notes: true
           fail_on_unmatched_files: false
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
