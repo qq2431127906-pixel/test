@@ -1,0 +1,27 @@
+# 环境配置文件（含 API Key，不上传 Git）
+.env
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code / IDE
+.vs/
+.vscode/
+*.swp
+*.swo
+
+# 上传文献临时目录
+upload_literature/
+
+# PyInstaller 构建产物
+build/
+dist/
+*.spec
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db

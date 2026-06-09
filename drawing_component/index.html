@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #1f2937;
+      background: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .wrapper { padding: 8px 0; }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #ffffff;
+      touch-action: none;
+      cursor: crosshair;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .toolbar button {
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      color: #374151;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .toolbar button.active {
+      background: #4096ff;
+      color: #ffffff;
+      border-color: #4096ff;
+    }
+    .toolbar button.confirm {
+      background: #4096ff;
+      color: #ffffff;
+      border-color: #4096ff;
+      font-weight: 600;
+      margin-left: auto;
+    }
+    .toolbar input[type="color"] {
+      width: 32px; height: 32px;
+      border: 1px solid #d1d5db; border-radius: 6px;
+      padding: 2px; cursor: pointer;
+    }
+    .toolbar input[type="range"] {
+      width: 80px;
+    }
+    .toolbar .size-label {
+      font-size: 12px; color: #6b7280; min-width: 28px; text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <canvas id="drawCanvas" width="560" height="260"></canvas>
+    <div class="toolbar">
+      <button id="btnPen" class="active">✏️ 画笔</button>
+      <button id="btnEraser">🧹 橡皮</button>
+      <input type="color" id="colorPicker" value="#000000" title="画笔颜色" />
+      <input type="range" id="widthSlider" min="1" max="12" value="3" title="笔触粗细" />
+      <span class="size-label" id="sizeLabel">3px</span>
+      <button id="btnClear">🗑️ 清除</button>
+      <button id="btnConfirm" class="confirm">✅ 确认手写</button>
+    </div>
+  </div>
+
+  <script>
+    // ========== Streamlit messaging ==========
+    function sendStreamlitMessage(type, data) {
+      window.parent.postMessage(
+        { isStreamlitMessage: true, type, ...data }, "*"
+      );
+    }
+    function setFrameHeight() {
+      sendStreamlitMessage("streamlit:setFrameHeight", { height: Math.max(document.body.scrollHeight, 340) });
+    }
+
+    // ========== Canvas setup ==========
+    const canvas = document.getElementById("drawCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Scale canvas for HiDPI
+    const dpr = window.devicePixelRatio || 1;
+    const displayW = 560, displayH = 260;
+    canvas.width = displayW * dpr;
+    canvas.height = displayH * dpr;
+    canvas.style.width = displayW + "px";
+    canvas.style.height = displayH + "px";
+    ctx.scale(dpr, dpr);
+
+    // Initial white background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, displayW, displayH);
+
+    // ========== State ==========
+    let drawing = false;
+    let mode = "pen";  // "pen" | "eraser"
+    let penColor = "#000000";
+    let penWidth = 3;
+
+    // ========== Toolbar refs ==========
+    const btnPen = document.getElementById("btnPen");
+    const btnEraser = document.getElementById("btnEraser");
+    const colorPicker = document.getElementById("colorPicker");
+    const widthSlider = document.getElementById("widthSlider");
+    const sizeLabel = document.getElementById("sizeLabel");
+    const btnClear = document.getElementById("btnClear");
+    const btnConfirm = document.getElementById("btnConfirm");
+
+    function setMode(newMode) {
+      mode = newMode;
+      if (mode === "pen") {
+        btnPen.classList.add("active");
+        btnEraser.classList.remove("active");
+        canvas.style.cursor = "crosshair";
+      } else {
+        btnEraser.classList.add("active");
+        btnPen.classList.remove("active");
+        canvas.style.cursor = "cell";
+      }
+    }
+
+    btnPen.addEventListener("click", () => setMode("pen"));
+    btnEraser.addEventListener("click", () => setMode("eraser"));
+    colorPicker.addEventListener("input", () => { penColor = colorPicker.value; });
+    widthSlider.addEventListener("input", () => {
+      penWidth = parseInt(widthSlider.value);
+      sizeLabel.textContent = penWidth + "px";
+    });
+
+    btnClear.addEventListener("click", () => {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, displayW, displayH);
+    });
+
+    // ========== Drawing logic (pointer events — works for mouse + touch) ==========
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = displayW / rect.width;
+      const scaleY = displayH / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    canvas.addEventListener("pointerdown", (e) => {
+      drawing = true;
+      const pos = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      if (mode === "eraser") {
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = penWidth * 2.5;
+      } else {
+        ctx.strokeStyle = penColor;
+        ctx.lineWidth = penWidth;
+      }
+    });
+
+    canvas.addEventListener("pointermove", (e) => {
+      if (!drawing) return;
+      e.preventDefault();
+      const pos = getPos(e);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    });
+
+    window.addEventListener("pointerup", () => { drawing = false; });
+
+    // ========== Confirm → send data URL ==========
+    btnConfirm.addEventListener("click", () => {
+      // Create a clean copy on a temp canvas (no DPR scaling hassle)
+      const exportCanvas = document.createElement("canvas");
+      exportCanvas.width = displayW;
+      exportCanvas.height = displayH;
+      const exportCtx = exportCanvas.getContext("2d");
+      // Copy from the scaled canvas
+      exportCtx.drawImage(canvas, 0, 0, displayW, displayH);
+
+      const dataUrl = exportCanvas.toDataURL("image/png");
+      const value = {
+        dataUrl: dataUrl,
+        name: "handwritten-" + Date.now() + ".png",
+        mimeType: "image/png",
+        size: Math.round(dataUrl.length * 0.75),
+        updatedAt: Date.now(),
+      };
+      sendStreamlitMessage("streamlit:setComponentValue", { value, dataType: "json" });
+    });
+
+    // ========== Init ==========
+    sendStreamlitMessage("streamlit:componentReady", { apiVersion: 1 });
+    setFrameHeight();
+  </script>
+</body>
+</html>
