@@ -3,8 +3,8 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'               # 推送 v1.0.0 等 tag 时触发
-  workflow_dispatch:        # 允许手动触发
+      - 'v*'
+  workflow_dispatch:
     inputs:
       version:
         description: '版本号 (如 1.0.1)'
@@ -22,13 +22,10 @@ jobs:
         id: version
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            V="${GITHUB_REF#refs/tags/v}"
-          else
-            V="${{ github.event.inputs.version }}"
-          fi
+          V="${{ github.event_name == 'push' && github.ref_name || github.event.inputs.version }}"
+          V="${V#v}"
           echo "version=$V" >> $GITHUB_OUTPUT
-          echo $V > version.txt
+          echo "$V" > version.txt
 
       - name: 设置 Python
         uses: actions/setup-python@v5
@@ -42,54 +39,63 @@ jobs:
           pip install pyinstaller
 
       - name: PyInstaller 打包
-        shell: powershell
+        shell: cmd
         run: |
-          pyinstaller --onedir --name "学术论文辅助写作" `
-            --add-data "app.py;." `
-            --add-data "literature_module.py;." `
-            --add-data "outline_module.py;." `
-            --add-data "polish_module.py;." `
-            --add-data "plagiarism_module.py;." `
-            --add-data "format_module.py;." `
-            --add-data "formula_module.py;." `
-            --add-data "shared_utils.py;." `
-            --add-data "ui_theme.py;." `
-            --add-data "prompt_templates.py;." `
-            --add-data "version.txt;." `
-            --add-data "paste_image_component;paste_image_component" `
-            --add-data "drawing_component;drawing_component" `
-            --add-data ".env.example;." `
-            --console `
+          pyinstaller --onedir --name "AcademicWritingAssistant" ^
+            --add-data "app.py;." ^
+            --add-data "literature_module.py;." ^
+            --add-data "outline_module.py;." ^
+            --add-data "polish_module.py;." ^
+            --add-data "plagiarism_module.py;." ^
+            --add-data "format_module.py;." ^
+            --add-data "formula_module.py;." ^
+            --add-data "shared_utils.py;." ^
+            --add-data "ui_theme.py;." ^
+            --add-data "prompt_templates.py;." ^
+            --add-data "version.txt;." ^
+            --add-data "paste_image_component;paste_image_component" ^
+            --add-data "drawing_component;drawing_component" ^
+            --add-data ".env.example;." ^
+            --console ^
             run.py
+          dir dist\AcademicWritingAssistant\run.exe
 
-      - name: 安装 NSIS
+      - name: 打包为 ZIP 安装包
         shell: powershell
         run: |
-          choco install nsis -y --no-progress
-          # 刷新 PATH 使 makensis 可用
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          makensis -VERSION
-
-      - name: 构建安装包
-        shell: powershell
-        run: |
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
           $version = "${{ steps.version.outputs.version }}"
-          $content = Get-Content installer.nsi -Raw -Encoding UTF8
-          $content = $content -replace '!define VERSION ".*?"', "!define VERSION `"$version`""
-          [System.IO.File]::WriteAllText("$PWD\installer.nsi", $content, [System.Text.UTF8Encoding]::new($false))
-          # 确认 PyInstaller 输出目录
-          Get-ChildItem "dist\学术论文辅助写作" -ErrorAction Stop | Select-Object Name -First 3
-          makensis installer.nsi
-          if ($LASTEXITCODE -ne 0) { throw "makensis failed" }
-          Get-ChildItem *.exe
+          $name = "学术论文辅助写作_v${version}"
+          $src = "dist\AcademicWritingAssistant"
+
+          # 创建用户 README
+          @"
+          学术论文辅助写作智能体 v${version}
+
+          【使用方法】
+          1. 双击 run.exe 启动
+          2. 首次运行会自动创建 .env 文件，用记事本填写 DashScope API Key
+          3. API Key 获取：https://dashscope.console.aliyun.com/apiKey
+          4. 浏览器自动打开 http://127.0.0.1:8501
+
+          【关闭方法】
+          关闭 run.exe 的命令行窗口即可停止服务
+
+          【注意事项】
+          - 查重分析为语义判断，非正式查重
+          - 首次文献模块运行需下载约 400MB 模型
+          "@ | Out-File -FilePath "$src\使用说明.txt" -Encoding UTF8
+
+          # 打包 ZIP
+          Compress-Archive -Path "$src\*" -DestinationPath "${name}.zip" -Force
+          Write-Host "Created: ${name}.zip"
+          Get-ChildItem *.zip
 
       - name: 发布到 GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: "v${{ steps.version.outputs.version }}"
-          files: "学术论文辅助写作智能体_Setup_v*.exe"
+          files: "学术论文辅助写作_v*.zip"
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
