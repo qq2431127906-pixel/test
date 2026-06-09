@@ -5,33 +5,18 @@ import re
 import sys
 import streamlit as st
 
-# 自动加载 .env — 多路径尝试
-def _load_env():
-    from dotenv import load_dotenv
-    app_dir = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
-    load_dotenv(os.path.join(app_dir, ".env"))
-    if os.getenv("DASHSCOPE_API_KEY"):
-        return
-    load_dotenv()
-    if os.getenv("DASHSCOPE_API_KEY"):
-        return
-    if getattr(sys, "frozen", False):
-        load_dotenv(os.path.join(os.path.dirname(sys._MEIPASS), ".env"))
-
-_load_env()
-
 # ============================================================
 # 0. LLM 统一封装
 # ============================================================
 from llama_index.llms.dashscope import DashScope
 
-API_KEY = os.getenv("DASHSCOPE_API_KEY", "") or "sk-9e84da6799aa4022947b585b78e0fb31"
-
 def get_llm(max_tokens=8192, temperature=0.1):
     """返回一个已配置的 DashScope LLM 实例"""
+    # 优先环境变量，没有就用内置 Key
+    key = os.getenv("DASHSCOPE_API_KEY") or "sk-9e84da6799aa4022947b585b78e0fb31"
     return DashScope(
         model_name="qwen-turbo",
-        api_key=API_KEY,
+        api_key=key,
         max_tokens=max_tokens,
         temperature=temperature,
     )
