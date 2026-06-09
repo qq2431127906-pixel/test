@@ -1,30 +1,17 @@
-# run.py — 启动器（精简版，不开重复浏览器）
-import os, sys, subprocess, time, threading, webbrowser
+# run.py — 极简启动器
+import os, sys, subprocess
 from dotenv import load_dotenv
 
 _app_dir = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
 load_dotenv(os.path.join(_app_dir, ".env"))
 
-APP_NAME = "学术论文辅助写作智能体"
 HOST = "127.0.0.1"
 PORT = 8501
-_OPENED = False
-_LOCK = threading.Lock()
 
 def resource_path(relative_path):
     if getattr(sys, "frozen", False):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(_app_dir, relative_path)
-
-def open_browser_once():
-    global _OPENED
-    with _LOCK:
-        if _OPENED:
-            return
-        _OPENED = True
-    time.sleep(4)
-    print("Opening browser...")
-    webbrowser.open(f"http://{HOST}:{PORT}")
 
 def main():
     env_path = os.path.join(_app_dir, ".env")
@@ -33,16 +20,20 @@ def main():
         if os.path.exists(example):
             import shutil
             shutil.copy(example, env_path)
-            print("已创建 .env 文件，请用记事本打开填入 DashScope API Key")
-            print(f"文件位置: {env_path}")
-            print("获取 Key: https://dashscope.console.aliyun.com/apiKey")
+            print("已创建 .env，请在记事本填入 DashScope API Key")
+            print(f"文件: {env_path}")
+            print("获取: https://dashscope.console.aliyun.com/apiKey")
             if sys.platform == "win32":
                 os.startfile(env_path)
-        input("\n填好 Key 后保存文件，按回车重新启动...")
+        print("\n填好 Key 后，重新双击 run.exe 启动")
+        input()
         sys.exit(0)
 
     app_path = resource_path("app.py")
-    cmd = [
+
+    # --server.headless true 禁止 Streamlit 自己开浏览器
+    # --server.fileWatcherType none 禁止热重载
+    proc = subprocess.Popen([
         sys.executable, "-m", "streamlit", "run", app_path,
         "--server.headless", "true",
         "--server.port", str(PORT),
@@ -51,24 +42,18 @@ def main():
         "--server.enableXsrfProtection", "false",
         "--server.fileWatcherType", "none",
         "--browser.gatherUsageStats", "false",
-        "--global.developmentMode", "false",
-    ]
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    threading.Thread(target=open_browser_once, daemon=True).start()
+    import webbrowser
+    webbrowser.open(f"http://{HOST}:{PORT}")
 
-    proc = subprocess.Popen(cmd, text=True, encoding="utf-8", errors="replace",
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-    print(f"\n{APP_NAME} 已启动")
-    print(f"浏览器访问: http://{HOST}:{PORT}")
-    print("关闭此窗口即可停止\n")
+    print(f"\n  学术论文辅助写作智能体 已启动")
+    print(f"  浏览器访问: http://{HOST}:{PORT}")
+    print(f"  关闭此窗口即可停止\n")
 
     try:
-        for line in proc.stdout:
-            print(line, end="")
+        proc.wait()
     except KeyboardInterrupt:
-        pass
-    finally:
         proc.terminate()
         proc.wait()
 
