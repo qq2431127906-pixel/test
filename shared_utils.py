@@ -15,9 +15,16 @@ def _get_dashscope_llm(api_key, max_tokens, temperature):
         from llama_index.llms.dashscope import DashScope
         return DashScope(model_name="qwen-turbo", api_key=api_key,
                          max_tokens=max_tokens, temperature=temperature)
-    except ImportError:
+    except ImportError as llama_index_error:
         # 直接用 dashscope SDK，不依赖 llama_index
-        from dashscope import Generation
+        try:
+            from dashscope import Generation
+        except ImportError as dashscope_error:
+            raise RuntimeError(
+                "缺少 DashScope 依赖。请运行：pip install -r requirements.txt "
+                "或单独安装：pip install dashscope llama-index-llms-dashscope"
+            ) from dashscope_error
+
         class _DashScopeCompatible:
             def __init__(self, model_name, api_key, max_tokens, temperature):
                 self.model_name = model_name
@@ -41,7 +48,9 @@ def _get_dashscope_llm(api_key, max_tokens, temperature):
                                      max_tokens=max_tokens, temperature=temperature)
 
 def get_llm(max_tokens=8192, temperature=0.1):
-    key = os.getenv("DASHSCOPE_API_KEY") or "sk-9e84da6799aa4022947b585b78e0fb31"
+    key = os.getenv("DASHSCOPE_API_KEY")
+    if not key or key.strip() in {"", "sk-你的API密钥"}:
+        raise RuntimeError("请先在 .env 文件中配置 DASHSCOPE_API_KEY 后再使用 AI 生成功能。")
     return _get_dashscope_llm(key, max_tokens, temperature)
 
 # ============================================================

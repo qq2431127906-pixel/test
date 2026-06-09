@@ -58,7 +58,9 @@ jobs:
             --add-data "paste_image_component;paste_image_component" ^
             --add-data "drawing_component;drawing_component" ^
             --add-data ".env.example;." ^
+            --hidden-import llama_index.llms.dashscope ^
             --collect-all llama_index ^
+            --collect-all llama_index.llms.dashscope ^
             --collect-all sentence_transformers ^
             --collect-all dashscope ^
             --collect-all docx ^
