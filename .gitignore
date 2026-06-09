@@ -20,6 +20,9 @@ build/
 dist/
 *.spec
 
+# NSIS 产物
+*.exe
+
 # macOS
 .DS_Store
 
