@@ -26,7 +26,7 @@ except ImportError:
     PdfReader = None
 
 
-api_key = os.getenv("DASHSCOPE_API_KEY", "")
+api_key = os.getenv("DASHSCOPE_API_KEY", "") or "sk-9e84da6799aa4022947b585b78e0fb31"
 
 llm = DashScope(
     model_name="qwen-turbo",

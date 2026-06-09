@@ -8,19 +8,15 @@ import streamlit as st
 # 自动加载 .env — 多路径尝试
 def _load_env():
     from dotenv import load_dotenv
-    # 路径 1：运行目录
     app_dir = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
     load_dotenv(os.path.join(app_dir, ".env"))
     if os.getenv("DASHSCOPE_API_KEY"):
         return
-    # 路径 2：CWD
     load_dotenv()
     if os.getenv("DASHSCOPE_API_KEY"):
         return
-    # 路径 3：exe 同目录（PyInstaller _MEIPASS 外层）
     if getattr(sys, "frozen", False):
-        root = os.path.dirname(sys._MEIPASS)
-        load_dotenv(os.path.join(root, ".env"))
+        load_dotenv(os.path.join(os.path.dirname(sys._MEIPASS), ".env"))
 
 _load_env()
 
@@ -29,12 +25,10 @@ _load_env()
 # ============================================================
 from llama_index.llms.dashscope import DashScope
 
-API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
+API_KEY = os.getenv("DASHSCOPE_API_KEY", "") or "sk-9e84da6799aa4022947b585b78e0fb31"
 
 def get_llm(max_tokens=8192, temperature=0.1):
     """返回一个已配置的 DashScope LLM 实例"""
-    if not API_KEY:
-        raise RuntimeError("未设置 DASHSCOPE_API_KEY，请在 .env 文件或环境变量中配置。")
     return DashScope(
         model_name="qwen-turbo",
         api_key=API_KEY,

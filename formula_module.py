@@ -10,7 +10,7 @@ from ui_theme import render_page_shell
 from dotenv import load_dotenv
 load_dotenv()
 
-api_key = os.getenv("DASHSCOPE_API_KEY", "")
+api_key = os.getenv("DASHSCOPE_API_KEY", "") or "sk-9e84da6799aa4022947b585b78e0fb31"
 
 PASTE_COMPONENT_DIR = os.path.join(os.path.dirname(__file__), "paste_image_component")
 paste_image_component = components.declare_component(
