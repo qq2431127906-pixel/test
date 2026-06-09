@@ -7,10 +7,9 @@ os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 import streamlit as st
 import streamlit.components.v1 as components
 from ui_theme import render_page_shell
+from shared_utils import get_dashscope_api_key, get_llm, format_ai_error
 from dotenv import load_dotenv
 load_dotenv()
-
-api_key = os.getenv("DASHSCOPE_API_KEY", "") or "sk-9e84da6799aa4022947b585b78e0fb31"
 
 PASTE_COMPONENT_DIR = os.path.join(os.path.dirname(__file__), "paste_image_component")
 paste_image_component = components.declare_component(
@@ -60,6 +59,7 @@ def parse_drawing_image(component_value):
 
 def recognize_formula(image_bytes, mime_type="image/png"):
     try:
+        api_key = get_dashscope_api_key()
         base64_image = base64.b64encode(image_bytes).decode('utf-8')
         url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -83,8 +83,16 @@ def recognize_formula(image_bytes, mime_type="image/png"):
         latex_code = latex_code.replace("```latex", "").replace("```", "").strip()
         latex_code = latex_code.replace("$", "").strip()
         return latex_code
+    except requests.exceptions.HTTPError as e:
+        status = e.response.status_code if e.response is not None else ""
+        detail = e.response.text[:300] if e.response is not None else str(e)
+        if status in (401, 403):
+            return "❌ 识别失败：请检查 DASHSCOPE_API_KEY 是否有效，并确认该 Key 已开通 qwen-vl-max 视觉模型权限。"
+        return f"❌ 识别失败：DashScope 接口返回异常（HTTP {status}）：{detail}"
+    except requests.exceptions.RequestException as e:
+        return f"❌ 识别失败：网络请求失败，请检查网络或代理设置。详情：{e}"
     except Exception as e:
-        return f"❌ 识别失败：{str(e)}"
+        return f"❌ {format_ai_error(e)}"
 
 def convert_all_formats(latex_code):
     formats = {}
@@ -95,7 +103,6 @@ def convert_all_formats(latex_code):
     formats["\\( ... \\) 格式"] = f"\\({latex_code}\\)"
     formats["\\begin{equation} ... \\end{equation} 格式"] = f"\\begin{{equation}}\n{latex_code}\n\\end{{equation}}"
     try:
-        from shared_utils import get_llm
         llm = get_llm(max_tokens=4096, temperature=0.01)
         mathml_prompt = f"""
         将以下LaTeX公式转换为Microsoft Word和MathType完全兼容的标准MathML代码。
@@ -116,11 +123,12 @@ def convert_all_formats(latex_code):
         formats["AsciiMath"] = llm.complete(asciimath_prompt).text.strip()
         typst_prompt = f"将以下LaTeX转换为Typst公式，只输出代码：{latex_code}"
         formats["Typst"] = llm.complete(typst_prompt).text.strip()
-    except:
-        formats["MathML (Word/MathType完美兼容)"] = "转换失败"
+    except Exception as exc:
+        error_text = f"转换失败：{format_ai_error(exc)}"
+        formats["MathML (Word/MathType完美兼容)"] = error_text
         formats["MathType TeX格式"] = latex_code
-        formats["AsciiMath"] = "转换失败"
-        formats["Typst"] = "转换失败"
+        formats["AsciiMath"] = error_text
+        formats["Typst"] = error_text
     return formats
 
 def init_formula_state():
@@ -238,11 +246,7 @@ def formula_page():
             st.info("识别结果将显示在这里")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        col_btn1, col_btn2, col_btn3, col_btn4, col_btn5 = st.columns(5)
-        with col_btn1:
-            st.button("AI智能编辑", use_container_width=True, disabled=True)
-        with col_btn2:
-            st.button("AI增强识别", use_container_width=True, disabled=True)
+        col_btn3, col_btn4 = st.columns(2)
         with col_btn3:
             with st.popover("复制LaTeX", use_container_width=True):
                 if st.button("无特殊附加", use_container_width=True) and "无特殊附加" in st.session_state.all_formats:
@@ -267,14 +271,6 @@ def formula_page():
                     st.session_state.current_code = st.session_state.all_formats["AsciiMath"]
                 if st.button("复制Typst", use_container_width=True) and "Typst" in st.session_state.all_formats:
                     st.session_state.current_code = st.session_state.all_formats["Typst"]
-                if st.button("导出Docx(Word/WPS)", use_container_width=True):
-                    st.info("Docx导出功能开发中")
-        with col_btn5:
-            with st.popover("复制PNG", use_container_width=True):
-                if st.button("复制PNG", use_container_width=True):
-                    st.info("PNG复制功能开发中")
-                if st.button("复制SVG", use_container_width=True):
-                    st.info("SVG复制功能开发中")
 
         st.markdown('<div class="glass-card-inner" style="font-family:monospace;font-size:14px;min-height:100px;white-space:pre-wrap;word-break:break-all;margin-bottom:1rem;">', unsafe_allow_html=True)
         st.code(st.session_state.current_code, language="markdown")
@@ -289,9 +285,14 @@ def formula_page():
                     st.session_state.latex_code = latex_code
                     if not latex_code.startswith("❌"):
                         st.session_state.all_formats = convert_all_formats(latex_code)
-                        st.session_state.current_code = st.session_state.all_formats["MathML (Word/MathType完美兼容)"]
+                        mathml_code = st.session_state.all_formats["MathML (Word/MathType完美兼容)"]
+                        if mathml_code.startswith("转换失败"):
+                            st.session_state.current_code = st.session_state.all_formats["无特殊附加"]
+                            st.warning("✅ 公式识别完成，但扩展格式转换失败，已先选择 LaTeX 原始格式。")
+                        else:
+                            st.session_state.current_code = mathml_code
+                            st.success("✅ 识别完成！已自动选择MathType兼容格式")
                         st.session_state.recognition_done = True
-                        st.success("✅ 识别完成！已自动选择MathType兼容格式")
                     else:
                         st.session_state.recognition_done = True
                         st.error(latex_code)

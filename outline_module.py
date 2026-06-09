@@ -1,7 +1,7 @@
 # outline_module.py —— 论文框架自动生成（报告化升级版 + 玻璃 UI）
 import streamlit as st
 from ui_theme import render_page_shell, glass_card, glass_card_close
-from shared_utils import get_llm, render_download_button
+from shared_utils import get_llm, render_download_button, show_ai_error
 from prompt_templates import OUTLINE_ENHANCED_PROMPT
 
 def generate_outline_report(llm, subject, thesis_title, research_direction, thesis_type,
@@ -42,14 +42,17 @@ def outline_page():
         elif not subject.strip():
             st.error("❌ 请填写学科领域（必填）！")
         else:
-            llm = get_llm(max_tokens=8192, temperature=0.1)
-            with st.spinner("正在生成专业论文框架报告，请稍候..."):
-                report = generate_outline_report(llm, subject, thesis_title, research_direction,
-                                                 thesis_type, research_methods, innovation_points,
-                                                 chapter_preference, format_preference)
-            st.session_state.outline_report = report
-            st.session_state.outline_title = thesis_title
-            st.success("✅ 论文框架生成完成！")
+            try:
+                llm = get_llm(max_tokens=8192, temperature=0.1)
+                with st.spinner("正在生成专业论文框架报告，请稍候..."):
+                    report = generate_outline_report(llm, subject, thesis_title, research_direction,
+                                                     thesis_type, research_methods, innovation_points,
+                                                     chapter_preference, format_preference)
+                st.session_state.outline_report = report
+                st.session_state.outline_title = thesis_title
+                st.success("✅ 论文框架生成完成！")
+            except Exception as exc:
+                show_ai_error(exc, "论文框架生成失败")
     st.markdown(glass_card_close(), unsafe_allow_html=True)
 
     # ---- 结果卡片 ----

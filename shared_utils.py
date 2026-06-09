@@ -8,6 +8,52 @@ import streamlit as st
 # ============================================================
 # 0. LLM 统一封装
 # ============================================================
+_ENV_LOADED = False
+
+def _load_env_file_fallback(env_path: str):
+    """在 python-dotenv 不可用时读取简单的 KEY=VALUE 配置。"""
+    with open(env_path, "r", encoding="utf-8-sig") as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+def load_app_env():
+    """统一加载 .env；不覆盖系统环境变量，兼容源码与 PyInstaller 运行。"""
+    global _ENV_LOADED
+    if _ENV_LOADED:
+        return
+
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        load_dotenv = None
+
+    candidate_dirs = []
+    if getattr(sys, "frozen", False):
+        candidate_dirs.append(os.path.dirname(os.path.abspath(sys.executable)))
+    candidate_dirs.append(os.path.dirname(os.path.abspath(__file__)))
+    candidate_dirs.append(os.getcwd())
+
+    seen = set()
+    for directory in candidate_dirs:
+        env_path = os.path.join(directory, ".env")
+        if env_path in seen:
+            continue
+        seen.add(env_path)
+        if os.path.exists(env_path):
+            if load_dotenv:
+                load_dotenv(env_path, override=False)
+            else:
+                _load_env_file_fallback(env_path)
+            break
+
+    _ENV_LOADED = True
 
 def _get_dashscope_llm(api_key, max_tokens, temperature):
     """从 llama_index 或 dashscope 获取 LLM，兼容两种安装方式"""
@@ -47,11 +93,35 @@ def _get_dashscope_llm(api_key, max_tokens, temperature):
         return _DashScopeCompatible(model_name="qwen-turbo", api_key=api_key,
                                      max_tokens=max_tokens, temperature=temperature)
 
-def get_llm(max_tokens=8192, temperature=0.1):
+def get_dashscope_api_key() -> str:
+    load_app_env()
     key = os.getenv("DASHSCOPE_API_KEY")
     if not key or key.strip() in {"", "sk-你的API密钥"}:
         raise RuntimeError("请先在 .env 文件中配置 DASHSCOPE_API_KEY 后再使用 AI 生成功能。")
+    return key.strip()
+
+def get_llm(max_tokens=8192, temperature=0.1):
+    key = get_dashscope_api_key()
     return _get_dashscope_llm(key, max_tokens, temperature)
+
+def format_ai_error(error: Exception) -> str:
+    """把常见模型/API异常转换成普通用户能看懂的提示。"""
+    msg = str(error).strip() or error.__class__.__name__
+    lower = msg.lower()
+    if "dashscope_api_key" in lower or "api key" in lower or "401" in lower or "unauthorized" in lower:
+        return "请检查 .env 文件中的 DASHSCOPE_API_KEY 是否已填写且有效。"
+    if "403" in lower or "forbidden" in lower or "permission" in lower or "qwen-vl-max" in lower:
+        return "当前 API Key 可能没有对应模型权限，请在 DashScope 控制台确认 qwen-turbo / qwen-vl-max 权限。"
+    if "quota" in lower or "insufficient" in lower or "balance" in lower or "余额" in msg or "额度" in msg:
+        return "DashScope 额度不足或账户欠费，请检查账号余额和调用额度。"
+    if "timeout" in lower or "timed out" in lower:
+        return "请求模型超时，请稍后重试，或检查网络连接。"
+    if "connection" in lower or "network" in lower or "proxy" in lower:
+        return "网络连接失败，请检查网络、代理或防火墙设置。"
+    return f"AI 服务调用失败：{msg}"
+
+def show_ai_error(error: Exception, prefix: str = "AI 生成失败"):
+    st.error(f"{prefix}：{format_ai_error(error)}")
 
 # ============================================================
 # 1. 依赖检测

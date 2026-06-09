@@ -1,6 +1,6 @@
 # 学术论文辅助写作智能体
 
-基于通义千问大模型的学术写作辅助工具，六大功能模块 + iOS 液态玻璃界面 + 自动更新。
+基于通义千问大模型的学术写作辅助工具，六大功能模块 + iOS 液态玻璃界面 + GitHub Releases 发布。
 
 ## 快速开始（方式一：源码运行）
 
@@ -25,28 +25,20 @@ streamlit run app.py
 
 ---
 
-## 快速开始（方式二：桌面安装包 .exe）
+## 快速开始（方式二：GitHub Releases 免安装包）
 
 ### 下载
 
-从 [GitHub Releases](../../releases) 下载最新 `学术论文辅助写作智能体_Setup_vX.X.X.exe`。
+从 [GitHub Releases](../../releases) 下载最新 `学术论文辅助写作_vX.X.X.zip`。
 
-### 安装
+### 使用
 
-1. 双击 Setup.exe → 安装到默认路径
-2. 桌面出现快捷方式
-3. 双击快捷方式 → 浏览器自动弹出
-4. 首次运行会自动创建 `.env`，用记事本填入 API Key 后重启即可
+1. 将 ZIP 完整解压到一个固定文件夹
+2. 双击 `assistant.exe` 启动
+3. 首次运行会自动创建 `.env`，用记事本填入 API Key 后重启
+4. 浏览器访问 `http://127.0.0.1:8501` 即可使用
 
 **不需要装 Python、不需要 pip、不需要配环境。**
-
-### 自动更新
-
-启动时自动检查 GitHub Releases，有新版本时弹出下载链接。  
-需要在 `.env` 中配置：
-```
-UPDATE_REPO=你的GitHub用户名/仓库名
-```
 
 ---
 
@@ -59,7 +51,7 @@ git tag v1.0.1
 git push origin v1.0.1
 ```
 
-5 分钟后，Releases 页面出现新的 Setup.exe。
+5 分钟后，Releases 页面出现新的 ZIP 包。
 
 ### 首次配置 GitHub Actions
 
@@ -85,11 +77,10 @@ git push origin v1.0.1
 - **UI**：Streamlit + iOS 液态玻璃自定义主题
 - **大模型**：通义千问（DashScope）qwen-turbo / qwen-vl-max
 - **文档处理**：python-docx / pdfplumber / pypdf
-- **打包**：PyInstaller + NSIS + GitHub Actions
+- **打包**：PyInstaller + GitHub Actions
 
 ## 注意事项
 
 - 查重分析为语义相似度判断，不是知网/万方数据库级正式查重
 - 公式识别需确保 API Key 有 qwen-vl-max 权限
-- 首次运行文献模块会自动下载 HuggingFace Embedding 模型（约 400MB）
 - 打包体积约 350MB（含 Python 运行时 + 全部依赖）

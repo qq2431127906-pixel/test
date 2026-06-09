@@ -4,6 +4,7 @@ from ui_theme import render_page_shell, glass_card, glass_card_close, inner_card
 from shared_utils import (
     get_llm, check_dependencies, show_dependency_install_hint,
     extract_text_from_uploaded_file, chunk_text_by_paragraphs, render_download_button,
+    show_ai_error,
 )
 from prompt_templates import POLISH_CHUNK_PROMPT, POLISH_REPORT_PROMPT
 
@@ -57,24 +58,25 @@ def polish_page():
         if not combined_text:
             st.warning("请输入需要润色的内容或上传文档！")
         else:
-            llm = get_llm(max_tokens=4096, temperature=0.1)
-            with st.spinner("正在润色中，请稍候..."):
-                chunks = chunk_text_by_paragraphs(combined_text, max_chars=3000)
-                if len(chunks) == 1:
-                    polished = polish_chunk(llm, chunks[0], polish_level)
-                else:
-                    polished_chunks = []
-                    progress_bar = st.progress(0, text="正在分段润色...")
-                    for i, chunk in enumerate(chunks):
-                        progress_bar.progress((i + 0.5) / len(chunks), text=f"正在润色第 {i+1}/{len(chunks)} 段...")
-                        polished_chunks.append(polish_chunk(llm, chunk, polish_level))
-                    progress_bar.progress(1.0, text="分段润色完成 ✅")
-                    polished = "\n\n".join(polished_chunks)
+            try:
+                llm = get_llm(max_tokens=4096, temperature=0.1)
+                with st.spinner("正在润色中，请稍候..."):
+                    chunks = chunk_text_by_paragraphs(combined_text, max_chars=3000)
+                    if len(chunks) == 1:
+                        polished = polish_chunk(llm, chunks[0], polish_level)
+                    else:
+                        polished_chunks = []
+                        progress_bar = st.progress(0, text="正在分段润色...")
+                        for i, chunk in enumerate(chunks):
+                            progress_bar.progress((i + 0.5) / len(chunks), text=f"正在润色第 {i+1}/{len(chunks)} 段...")
+                            polished_chunks.append(polish_chunk(llm, chunk, polish_level))
+                        progress_bar.progress(1.0, text="分段润色完成 ✅")
+                        polished = "\n\n".join(polished_chunks)
 
-                with st.spinner("正在生成润色报告（摘要/修改说明/替换建议）..."):
-                    report = generate_polish_report(llm, combined_text, polished)
+                    with st.spinner("正在生成润色报告（摘要/修改说明/替换建议）..."):
+                        report = generate_polish_report(llm, combined_text, polished)
 
-                full_report = f"""# ✍️ 论文润色报告
+                    full_report = f"""# ✍️ 论文润色报告
 
 > 润色强度：{polish_level}
 
@@ -88,10 +90,12 @@ def polish_page():
 
 {report}
 """
-                st.session_state.polish_report = full_report
-                st.session_state.polish_polished = polished
-                st.session_state.polish_level = polish_level
-                st.success("✅ 润色完成！")
+                    st.session_state.polish_report = full_report
+                    st.session_state.polish_polished = polished
+                    st.session_state.polish_level = polish_level
+                    st.success("✅ 润色完成！")
+            except Exception as exc:
+                show_ai_error(exc, "论文润色失败")
     st.markdown(glass_card_close(), unsafe_allow_html=True)
 
     # ---- 结果卡片 ----

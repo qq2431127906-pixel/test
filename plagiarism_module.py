@@ -4,6 +4,7 @@ from ui_theme import render_page_shell, glass_card, glass_card_close
 from shared_utils import (
     get_llm, check_dependencies, show_dependency_install_hint,
     extract_text_from_uploaded_file, render_download_button,
+    show_ai_error,
 )
 from prompt_templates import PLAGIARISM_RISK_PROMPT
 
@@ -48,10 +49,11 @@ def plagiarism_page():
         if not combined_text:
             st.warning("请输入需要检测的内容或上传文档！")
         else:
-            llm = get_llm(max_tokens=4096, temperature=0.1)
-            with st.spinner("正在进行语义查重分析，请稍候..."):
-                analysis = analyze_plagiarism_risk(llm, combined_text)
-            full_report = f"""# ⚠️ 查重风险分析报告
+            try:
+                llm = get_llm(max_tokens=4096, temperature=0.1)
+                with st.spinner("正在进行语义查重分析，请稍候..."):
+                    analysis = analyze_plagiarism_risk(llm, combined_text)
+                full_report = f"""# ⚠️ 查重风险分析报告
 
 > ⚠️ **重要提示**：本报告基于大语言模型语义分析，非知网/万方数据库级正式查重。结果仅供参考。
 
@@ -62,9 +64,11 @@ def plagiarism_page():
 ---
 > 生成说明：本报告由学术论文辅助写作智能体自动生成，基于语义相似度判断，不能替代正式查重服务。
 """
-            st.session_state.plagiarism_report = full_report
-            st.session_state.plagiarism_analysis = analysis
-            st.success("✅ 查重分析完成！")
+                st.session_state.plagiarism_report = full_report
+                st.session_state.plagiarism_analysis = analysis
+                st.success("✅ 查重分析完成！")
+            except Exception as exc:
+                show_ai_error(exc, "查重分析失败")
     st.markdown(glass_card_close(), unsafe_allow_html=True)
 
     # ---- 结果卡片 ----

@@ -7,6 +7,7 @@ from shared_utils import (
     show_dependency_install_hint,
     extract_texts_from_files,
     render_download_button,
+    show_ai_error,
 )
 from prompt_templates import (
     LITERATURE_SINGLE_SUMMARY_PROMPT,
@@ -54,29 +55,30 @@ def literature_page():
         elif not deps_ok:
             st.error("请先安装缺失的依赖包后再使用上传功能。")
         else:
-            llm = get_llm(max_tokens=4096, temperature=0.1)
-            with st.spinner("正在抽取文献正文..."):
-                file_data = extract_texts_from_files(uploaded_files)
-            valid_files = [f for f in file_data if not f["error"] and f["text"]]
-            error_files = [f for f in file_data if f["error"]]
-            for ef in error_files:
-                st.warning(f"⚠️ {ef['name']}：{ef['error']}")
-            if not valid_files:
-                st.error("所有文件均无法抽取正文，请检查文件格式或内容。")
-            else:
-                single_summaries = []
-                progress_bar = st.progress(0, text="正在生成单篇摘要...")
-                for i, fdata in enumerate(valid_files):
-                    progress_bar.progress(i / len(valid_files), text=f"正在生成：{fdata['name']} 的结构化摘要...")
-                    with st.spinner(f"正在分析：{fdata['name']}..."):
-                        single_summaries.append(generate_single_summary(llm, fdata["text"], subject, fdata["name"]))
-                progress_bar.progress(1.0, text="单篇摘要生成完成 ✅")
+            try:
+                llm = get_llm(max_tokens=4096, temperature=0.1)
+                with st.spinner("正在抽取文献正文..."):
+                    file_data = extract_texts_from_files(uploaded_files)
+                valid_files = [f for f in file_data if not f["error"] and f["text"]]
+                error_files = [f for f in file_data if f["error"]]
+                for ef in error_files:
+                    st.warning(f"⚠️ {ef['name']}：{ef['error']}")
+                if not valid_files:
+                    st.error("所有文件均无法抽取正文，请检查文件格式或内容。")
+                else:
+                    single_summaries = []
+                    progress_bar = st.progress(0, text="正在生成单篇摘要...")
+                    for i, fdata in enumerate(valid_files):
+                        progress_bar.progress(i / len(valid_files), text=f"正在生成：{fdata['name']} 的结构化摘要...")
+                        with st.spinner(f"正在分析：{fdata['name']}..."):
+                            single_summaries.append(generate_single_summary(llm, fdata["text"], subject, fdata["name"]))
+                    progress_bar.progress(1.0, text="单篇摘要生成完成 ✅")
 
-                with st.spinner("正在生成综合研究报告（脉络/对比/热点/大纲）..."):
-                    synthesis = generate_synthesis(llm, "\n\n---\n\n".join(single_summaries), subject)
+                    with st.spinner("正在生成综合研究报告（脉络/对比/热点/大纲）..."):
+                        synthesis = generate_synthesis(llm, "\n\n---\n\n".join(single_summaries), subject)
 
-                single_section = "\n\n---\n\n".join(single_summaries)
-                full_report = f"""# 📑 文献梳理报告
+                    single_section = "\n\n---\n\n".join(single_summaries)
+                    full_report = f"""# 📑 文献梳理报告
 
 ---
 
@@ -92,10 +94,12 @@ def literature_page():
 
 ---
 """
-                st.session_state.literature_report = full_report
-                st.session_state.literature_single = single_section
-                st.session_state.literature_synthesis = synthesis
-                st.success("✅ 文献梳理完成！")
+                    st.session_state.literature_report = full_report
+                    st.session_state.literature_single = single_section
+                    st.session_state.literature_synthesis = synthesis
+                    st.success("✅ 文献梳理完成！")
+            except Exception as exc:
+                show_ai_error(exc, "文献梳理失败")
     st.markdown(glass_card_close(), unsafe_allow_html=True)
 
     # ---- 结果卡片 ----

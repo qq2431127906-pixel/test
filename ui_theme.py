@@ -18,17 +18,20 @@ THEME_CSS = """
    ============================================================ */
 
 :root {
+    --mouse-x:          50%;
+    --mouse-y:          35%;
     --primary:          #5b6fff;
     --primary-light:    #8b9eff;
-    --primary-glow:     rgba(91,111,255,0.18);
-    --surface-card:     rgba(255,255,255,0.11);
-    --surface-inner:    rgba(255,255,255,0.18);
-    --surface-input:    rgba(255,255,255,0.14);
-    --border-card:      rgba(255,255,255,0.35);
-    --border-subtle:    rgba(255,255,255,0.25);
-    --shadow-card:      0 2px 20px rgba(0,0,0,0.03), 0 0.5px 2px rgba(0,0,0,0.02);
-    --shadow-hover:     0 3px 24px rgba(0,0,0,0.05), 0 1px 4px rgba(0,0,0,0.03);
-    --radius-xl:        26px;
+    --primary-glow:     rgba(91,111,255,0.16);
+    --surface-card:     rgba(255,255,255,0.24);
+    --surface-inner:    rgba(255,255,255,0.22);
+    --surface-input:    rgba(255,255,255,0.18);
+    --border-card:      rgba(255,255,255,0.48);
+    --border-subtle:    rgba(255,255,255,0.32);
+    --glass-highlight:  rgba(255,255,255,0.72);
+    --shadow-card:      0 16px 48px rgba(38,45,78,0.08), 0 2px 8px rgba(38,45,78,0.04), inset 0 1px 0 rgba(255,255,255,0.46);
+    --shadow-hover:     0 20px 58px rgba(38,45,78,0.11), 0 5px 18px rgba(91,111,255,0.08), inset 0 1px 0 rgba(255,255,255,0.58);
+    --radius-xl:        24px;
     --radius-lg:        18px;
     --radius-md:        14px;
     --radius-sm:        10px;
@@ -39,19 +42,21 @@ THEME_CSS = """
 html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] { background: transparent !important; }
 
 [data-testid="stAppViewContainer"] {
-    background: linear-gradient(170deg, #d9e0ee 0%, #e4e9f4 30%, #edeaf6 60%, #e1e7f2 100%) !important;
+    background:
+        radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(255,255,255,0.36), transparent 28%),
+        linear-gradient(150deg, #dbe3f0 0%, #eef2f8 36%, #f3eef8 68%, #e2eaf4 100%) !important;
     position: relative; overflow-x: hidden;
 }
 [data-testid="stAppViewContainer"]::before {
     content: ""; position: fixed; top: -250px; left: -160px;
     width: 620px; height: 620px;
-    background: radial-gradient(circle, rgba(110,130,250,0.13) 0%, transparent 65%);
+    background: radial-gradient(circle, rgba(91,111,255,0.12) 0%, transparent 68%);
     border-radius: 50%; pointer-events: none; z-index: 0;
 }
 [data-testid="stAppViewContainer"]::after {
     content: ""; position: fixed; bottom: -220px; right: -140px;
     width: 540px; height: 540px;
-    background: radial-gradient(circle, rgba(150,110,235,0.10) 0%, transparent 65%);
+    background: radial-gradient(circle, rgba(125,100,230,0.09) 0%, transparent 68%);
     border-radius: 50%; pointer-events: none; z-index: 0;
 }
 
@@ -75,30 +80,73 @@ footer                            { visibility: hidden; }
 
 /* ===== 玻璃卡片 ===== */
 .glass-card {
-    background: var(--surface-card) !important;
-    backdrop-filter: blur(36px); -webkit-backdrop-filter: blur(36px);
+    background:
+        radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(255,255,255,0.38), transparent 32%),
+        linear-gradient(145deg, rgba(255,255,255,0.32), rgba(255,255,255,0.12)) !important;
+    backdrop-filter: blur(34px) saturate(1.45); -webkit-backdrop-filter: blur(34px) saturate(1.45);
     border-radius: var(--radius-xl) !important;
     border: 1px solid var(--border-card) !important;
     box-shadow: var(--shadow-card) !important;
     padding: 1.5rem 1.7rem !important;
     margin-bottom: 0.9rem !important;
-    transition: transform var(--ease-ios), box-shadow var(--ease-ios);
+    transition: transform var(--ease-ios), box-shadow var(--ease-ios), border-color var(--ease-ios), background 0.45s ease;
     animation: fadeSlideIn 0.4s ease both;
     position: relative; z-index: 2;
+    overflow: hidden;
+    isolation: isolate;
 }
-.glass-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover) !important; }
+.glass-card::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        linear-gradient(135deg, rgba(255,255,255,0.74), rgba(255,255,255,0.06) 36%, rgba(255,255,255,0.02) 62%, rgba(91,111,255,0.08)),
+        radial-gradient(circle at 18% 0%, rgba(255,255,255,0.72), transparent 30%);
+    opacity: 0.58;
+}
+.glass-card::after {
+    content: "";
+    position: absolute; inset: 1px;
+    border-radius: calc(var(--radius-xl) - 1px);
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(91,111,255,0.10), transparent 36%);
+    opacity: 0;
+    transition: opacity var(--ease-ios);
+}
+.glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover) !important;
+    border-color: rgba(255,255,255,0.62) !important;
+}
+.glass-card:hover::after { opacity: 1; }
+.glass-card > * { position: relative; z-index: 1; }
 @keyframes fadeSlideIn {
     from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
 }
 .glass-card-inner {
-    background: var(--surface-inner) !important;
-    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    background:
+        linear-gradient(145deg, rgba(255,255,255,0.26), rgba(255,255,255,0.12)) !important;
+    backdrop-filter: blur(22px) saturate(1.3); -webkit-backdrop-filter: blur(22px) saturate(1.3);
     border-radius: var(--radius-lg) !important;
     border: 1px solid var(--border-subtle) !important;
     padding: 1.1rem 1.3rem !important;
     margin-bottom: 0.6rem !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.38), 0 6px 22px rgba(38,45,78,0.04);
+    position: relative;
+    overflow: hidden;
 }
+.glass-card-inner::before {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(255,255,255,0.24), transparent 34%);
+    opacity: 0.55;
+}
+.glass-card-inner > * { position: relative; z-index: 1; }
 
 /* ===== 按钮 — 只改外层三个属性，不动内部文字 ===== */
 .stButton > button[kind="primary"] {
@@ -111,9 +159,10 @@ footer                            { visibility: hidden; }
 }
 .stButton > button:not([kind="primary"]),
 .stDownloadButton > button {
-    background: rgba(255,255,255,0.3) !important;
-    border-color: rgba(255,255,255,0.5) !important;
+    background: rgba(255,255,255,0.34) !important;
+    border-color: rgba(255,255,255,0.56) !important;
     color: #3a3f5c !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.42) !important;
 }
 .stButton > button:not([kind="primary"]):hover,
 .stDownloadButton > button:hover {
@@ -216,33 +265,51 @@ div.stAlert {
 
 /* ===== 光标光晕 (A) ===== */
 #cursor-glow {
-    position: fixed; top: -150px; left: -150px;
-    width: 300px; height: 300px;
+    position: fixed; top: -170px; left: -170px;
+    width: 340px; height: 340px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(110,130,250,0.20) 0%, rgba(150,120,240,0.08) 40%, transparent 70%);
+    background: radial-gradient(circle, rgba(255,255,255,0.24) 0%, rgba(91,111,255,0.10) 36%, rgba(125,100,230,0.04) 58%, transparent 74%);
     pointer-events: none; z-index: 9998;
-    will-change: left, top;
+    mix-blend-mode: screen;
+    opacity: 0.72;
+    transform: translate(-50%, -50%);
+    will-change: left, top, opacity;
 }
 
 /* ===== 点击涟漪 (C) ===== */
 .ripple {
     position: fixed; top: 0; left: 0;
-    width: 30px; height: 30px;
+    width: 28px; height: 28px;
     border-radius: 50%;
     pointer-events: none; z-index: 9997;
     transform: translate(-50%, -50%) scale(0);
     opacity: 0;
-    border: 1.5px solid rgba(91,111,255,0.45);
-    background: rgba(91,111,255,0.06);
+    border: 1px solid rgba(91,111,255,0.32);
+    background: rgba(255,255,255,0.10);
     will-change: transform, opacity;
 }
 .ripple.go {
-    animation: rippleOut 0.65s ease-out forwards;
+    animation: rippleOut 0.58s ease-out forwards;
 }
 @keyframes rippleOut {
-    0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0.55; }
-    60%  { opacity: 0.15; }
-    100% { transform: translate(-50%, -50%) scale(7);   opacity: 0; }
+    0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0.42; }
+    65%  { opacity: 0.12; }
+    100% { transform: translate(-50%, -50%) scale(6);   opacity: 0; }
+}
+
+@media (max-width: 760px) {
+    #cursor-glow { display: none; }
+    .glass-card:hover { transform: none; }
+    .block-container { padding-left: 0.8rem !important; padding-right: 0.8rem !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #cursor-glow, .ripple { display: none !important; }
+    .glass-card, .glass-card-inner, .stButton > button, .stDownloadButton > button {
+        animation: none !important;
+        transition: none !important;
+    }
+    .glass-card:hover { transform: none !important; }
 }
 """
 
@@ -263,6 +330,10 @@ INTERACTION_JS = """
     if (window.__iosRippleInstalled) return;
     window.__iosRippleInstalled = true;
 
+    var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (reducedMotion) return;
+
     // ========== 光标光晕 (A) ==========
     var glow = document.createElement('div');
     glow.id = 'cursor-glow';
@@ -270,22 +341,44 @@ INTERACTION_JS = """
 
     var mx = innerWidth / 2, my = innerHeight / 2;  // 目标位置
     var cx = mx, cy = my;                            // 当前渲染位置（lerp）
+    var root = document.documentElement;
+    var rafPending = false;
+
+    function updateMouseVars(x, y) {
+        if (rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(function() {
+            root.style.setProperty('--mouse-x', Math.max(0, Math.min(100, (x / innerWidth) * 100)) + '%');
+            root.style.setProperty('--mouse-y', Math.max(0, Math.min(100, (y / innerHeight) * 100)) + '%');
+            rafPending = false;
+        });
+    }
 
     function lerp() {
         cx += (mx - cx) * 0.12;
         cy += (my - cy) * 0.12;
-        glow.style.left = cx + 'px';
-        glow.style.top  = cy + 'px';
+        if (!coarsePointer) {
+            glow.style.left = cx + 'px';
+            glow.style.top  = cy + 'px';
+        }
         requestAnimationFrame(lerp);
     }
     requestAnimationFrame(lerp);
 
     window.addEventListener('mousemove', function(e) {
         mx = e.clientX; my = e.clientY;
+        updateMouseVars(e.clientX, e.clientY);
     });
     window.addEventListener('touchmove', function(e) {
-        if (e.touches.length) { mx = e.touches[0].clientX; my = e.touches[0].clientY; }
+        if (e.touches.length) {
+            mx = e.touches[0].clientX; my = e.touches[0].clientY;
+            updateMouseVars(mx, my);
+        }
     }, {passive: true});
+
+    if (coarsePointer) {
+        glow.style.display = 'none';
+    }
 
     // ========== 点击涟漪 (C) ==========
     var POOL_SIZE = 8;
@@ -302,6 +395,7 @@ INTERACTION_JS = """
     var poolIdx = 0;
 
     function spawnRipple(x, y) {
+        if (reducedMotion) return;
         var item = pool[poolIdx];
         poolIdx = (poolIdx + 1) % POOL_SIZE;
         if (item.busy) { item.el.classList.remove('go'); }
@@ -311,7 +405,7 @@ INTERACTION_JS = """
         // force reflow so animation restarts
         void item.el.offsetWidth;
         item.el.classList.add('go');
-        setTimeout(function() { item.busy = false; }, 700);
+        setTimeout(function() { item.busy = false; }, 620);
     }
 
     window.addEventListener('click', function(e) {

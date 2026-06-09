@@ -5,7 +5,7 @@ import re
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 import streamlit as st
-from shared_utils import get_llm
+from shared_utils import get_llm, show_ai_error
 from ui_theme import render_page_shell
 from dotenv import load_dotenv
 load_dotenv()
@@ -24,10 +24,6 @@ try:
     from pypdf import PdfReader
 except ImportError:
     PdfReader = None
-
-
-api_key = os.getenv("DASHSCOPE_API_KEY", "") or "sk-9e84da6799aa4022947b585b78e0fb31"
-
 
 REFERENCE_FROM_DOCUMENT_PROMPT = """
 你是专业的学术参考文献格式化助手。请根据用户上传文档中可识别的信息，
@@ -433,7 +429,11 @@ def format_page():
                 return
 
             with st.spinner("正在识别文档信息并生成参考文献..."):
-                result = generate_references_from_documents(reference_files)
+                try:
+                    result = generate_references_from_documents(reference_files)
+                except Exception as exc:
+                    show_ai_error(exc, "参考文献生成失败")
+                    return
                 st.success("✅ 参考文献生成完成")
                 st.code(result, language="text")
                 st.download_button(
