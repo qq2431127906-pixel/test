@@ -1,6 +1,5 @@
-# run.py — 启动器（单进程，直接调 streamlit）
 import os, sys, shutil, webbrowser
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values
 
 _app_dir = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
 load_dotenv(os.path.join(_app_dir, ".env"))
@@ -27,26 +26,25 @@ def main():
         input()
         return
 
-    # 显式注入环境变量（防止子模块 load_dotenv 路径不对）
-    from dotenv import dotenv_values
-    env_vars = dotenv_values(env_path)
-    for k, v in env_vars.items():
+    for k, v in dotenv_values(env_path).items():
         os.environ.setdefault(k, v)
 
     app_path = resource_path("app.py")
-    sys.argv = [
-        "streamlit", "run", app_path,
-        "--server.port", "8501",
-        "--server.address", "127.0.0.1",
-        "--server.headless", "true",
-        "--server.enableCORS", "false",
-        "--server.enableXsrfProtection", "false",
-        "--server.fileWatcherType", "none",
-        "--browser.gatherUsageStats", "false",
-    ]
+
+    os.environ["STREAMLIT_SERVER_HEADLESS"] = "true"
+    os.environ["STREAMLIT_SERVER_PORT"] = "8501"
+    os.environ["STREAMLIT_SERVER_ADDRESS"] = "127.0.0.1"
+    os.environ["STREAMLIT_SERVER_FILE_WATCHER_TYPE"] = "none"
+    os.environ["STREAMLIT_BROWSER_GATHER_USAGE_STATS"] = "false"
+    os.environ["STREAMLIT_GLOBAL_DEVELOPMENT_MODE"] = "false"
 
     webbrowser.open("http://127.0.0.1:8501")
 
+    print(f"\n  学术论文辅助写作智能体 已启动")
+    print(f"  浏览器访问: http://127.0.0.1:8501")
+    print(f"  关闭此窗口即可停止\n")
+
+    sys.argv = ["streamlit", "run", app_path]
     from streamlit.web import cli as stcli
     stcli.main()
 
