@@ -61,22 +61,15 @@ jobs:
             --console ^
             run.py
 
-      - name: 写使用说明
-        run: python write_readme.py "${{ steps.version.outputs.version }}" "dist\\assistant"
-
-      - name: 用 iexpress 打包自解压 exe
-        shell: cmd
-        run: python make_self_extract.py "${{ steps.version.outputs.version }}" "dist\\assistant"
+      - name: 写入使用说明并打包 ZIP
+        run: python build_release.py "${{ steps.version.outputs.version }}"
 
       - name: 发布到 GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: "v${{ steps.version.outputs.version }}"
-          files: |
-            学术论文辅助写作智能体_Setup_v*.exe
-            学术论文辅助写作_v*.zip
-          fail_on_unmatched_files: false
+          files: 学术论文辅助写作_v*.zip
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
