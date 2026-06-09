@@ -58,8 +58,14 @@ jobs:
             --add-data "paste_image_component;paste_image_component" ^
             --add-data "drawing_component;drawing_component" ^
             --add-data ".env.example;." ^
+            --collect-all llama_index ^
+            --collect-all sentence_transformers ^
+            --collect-all dashscope ^
+            --collect-all docx ^
+            --collect-all pdfplumber ^
+            --collect-all pypdf ^
+            --collect-all dotenv ^
             --copy-metadata streamlit ^
-            --copy-metadata altair ^
             --collect-all streamlit ^
             --console ^
             run.py
