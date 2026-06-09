@@ -2,11 +2,27 @@
 import io
 import os
 import re
+import sys
 import streamlit as st
-from dotenv import load_dotenv
 
-# 自动加载 .env 文件
-load_dotenv()
+# 自动加载 .env — 多路径尝试
+def _load_env():
+    from dotenv import load_dotenv
+    # 路径 1：运行目录
+    app_dir = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
+    load_dotenv(os.path.join(app_dir, ".env"))
+    if os.getenv("DASHSCOPE_API_KEY"):
+        return
+    # 路径 2：CWD
+    load_dotenv()
+    if os.getenv("DASHSCOPE_API_KEY"):
+        return
+    # 路径 3：exe 同目录（PyInstaller _MEIPASS 外层）
+    if getattr(sys, "frozen", False):
+        root = os.path.dirname(sys._MEIPASS)
+        load_dotenv(os.path.join(root, ".env"))
+
+_load_env()
 
 # ============================================================
 # 0. LLM 统一封装

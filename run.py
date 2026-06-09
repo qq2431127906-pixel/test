@@ -13,7 +13,6 @@ def resource_path(relative_path):
 
 
 def main():
-    # 先处理 .env
     env_path = os.path.join(_app_dir, ".env")
     if not os.path.exists(env_path):
         example = resource_path(".env.example")
@@ -28,7 +27,12 @@ def main():
         input()
         return
 
-    # 设置 streamlit 参数（只做一次）
+    # 显式注入环境变量（防止子模块 load_dotenv 路径不对）
+    from dotenv import dotenv_values
+    env_vars = dotenv_values(env_path)
+    for k, v in env_vars.items():
+        os.environ.setdefault(k, v)
+
     app_path = resource_path("app.py")
     sys.argv = [
         "streamlit", "run", app_path,
@@ -41,10 +45,8 @@ def main():
         "--browser.gatherUsageStats", "false",
     ]
 
-    # 开浏览器
     webbrowser.open("http://127.0.0.1:8501")
 
-    # 启动 streamlit
     from streamlit.web import cli as stcli
     stcli.main()
 
