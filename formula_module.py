@@ -95,8 +95,8 @@ def convert_all_formats(latex_code):
     formats["\\( ... \\) 格式"] = f"\\({latex_code}\\)"
     formats["\\begin{equation} ... \\end{equation} 格式"] = f"\\begin{{equation}}\n{latex_code}\n\\end{{equation}}"
     try:
-        from llama_index.llms.dashscope import DashScope
-        llm = DashScope(model_name="qwen-turbo", api_key=api_key, max_tokens=4096, temperature=0.01, timeout=30)
+        from shared_utils import get_llm
+        llm = get_llm(max_tokens=4096, temperature=0.01)
         mathml_prompt = f"""
         将以下LaTeX公式转换为Microsoft Word和MathType完全兼容的标准MathML代码。
         要求：

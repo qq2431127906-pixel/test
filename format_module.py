@@ -5,7 +5,7 @@ import re
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 import streamlit as st
-from llama_index.llms.dashscope import DashScope
+from shared_utils import get_llm
 from ui_theme import render_page_shell
 from dotenv import load_dotenv
 load_dotenv()
@@ -27,13 +27,6 @@ except ImportError:
 
 
 api_key = os.getenv("DASHSCOPE_API_KEY", "") or "sk-9e84da6799aa4022947b585b78e0fb31"
-
-llm = DashScope(
-    model_name="qwen-turbo",
-    api_key=api_key,
-    max_tokens=8192,
-    temperature=0.1
-)
 
 
 REFERENCE_FROM_DOCUMENT_PROMPT = """
@@ -167,7 +160,7 @@ def build_reference_context(uploaded_files):
 def generate_references_from_documents(uploaded_files):
     document_context = build_reference_context(uploaded_files)
     prompt = REFERENCE_FROM_DOCUMENT_PROMPT.format(document_context=document_context)
-    return llm.complete(prompt).text.strip()
+    return get_llm().complete(prompt).text.strip()
 
 
 def parse_chapter_heading(text):

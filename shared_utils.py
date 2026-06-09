@@ -8,18 +8,41 @@ import streamlit as st
 # ============================================================
 # 0. LLM 统一封装
 # ============================================================
-from llama_index.llms.dashscope import DashScope
+
+def _get_dashscope_llm(api_key, max_tokens, temperature):
+    """从 llama_index 或 dashscope 获取 LLM，兼容两种安装方式"""
+    try:
+        from llama_index.llms.dashscope import DashScope
+        return DashScope(model_name="qwen-turbo", api_key=api_key,
+                         max_tokens=max_tokens, temperature=temperature)
+    except ImportError:
+        # 直接用 dashscope SDK，不依赖 llama_index
+        from dashscope import Generation
+        class _DashScopeCompatible:
+            def __init__(self, model_name, api_key, max_tokens, temperature):
+                self.model_name = model_name
+                self.api_key = api_key
+                self.max_tokens = max_tokens
+                self.temperature = temperature
+            def complete(self, prompt):
+                resp = Generation.call(
+                    model=self.model_name,
+                    prompt=str(prompt),
+                    api_key=self.api_key,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                )
+                if resp.status_code != 200:
+                    raise RuntimeError(f"DashScope error: {resp.message}")
+                class _Response:
+                    text = resp.output.get("text", "")
+                return _Response()
+        return _DashScopeCompatible(model_name="qwen-turbo", api_key=api_key,
+                                     max_tokens=max_tokens, temperature=temperature)
 
 def get_llm(max_tokens=8192, temperature=0.1):
-    """返回一个已配置的 DashScope LLM 实例"""
-    # 优先环境变量，没有就用内置 Key
     key = os.getenv("DASHSCOPE_API_KEY") or "sk-9e84da6799aa4022947b585b78e0fb31"
-    return DashScope(
-        model_name="qwen-turbo",
-        api_key=key,
-        max_tokens=max_tokens,
-        temperature=temperature,
-    )
+    return _get_dashscope_llm(key, max_tokens, temperature)
 
 # ============================================================
 # 1. 依赖检测
